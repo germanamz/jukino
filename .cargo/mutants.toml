@@ -1,0 +1,6 @@
+# cargo-mutants settings. See CONVENTIONS.md.
+test_tool = "nextest"
+# The arch check lists files through git, so scratch copies need `.git`.
+copy_vcs = true
+# Launches external tools only; every decision it makes is tested elsewhere.
+exclude_globs = ["xtask/src/runner.rs"]
