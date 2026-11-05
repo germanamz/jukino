@@ -1,0 +1,6 @@
+/target/
+.tusk/
+.claude/skills/tusk/
+.claude/settings.local.json
+/mutants.out/
+/mutants.out.old/

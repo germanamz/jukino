@@ -1,0 +1,15 @@
+[package]
+name = "jukino-ui"
+description = "Placeholder for the Jukino user interface."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+clap.workspace = true
+
+[lints]
+workspace = true
