@@ -1,0 +1,12 @@
+# Commit message rules, checked by `committed` in the commit-msg hook and in CI.
+# See CONVENTIONS.md (Commits, PRs and review).
+style = "conventional"
+allowed_types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"]
+subject_length = 72
+subject_capitalized = false
+subject_not_punctuated = true
+imperative_subject = true
+no_fixup = true
+no_wip = true
+line_length = 0
+merge_commit = false

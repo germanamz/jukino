@@ -1,0 +1,23 @@
+# Git hooks for every contributor. Install once with `lefthook install`.
+# See CONVENTIONS.md (Commits, PRs and review).
+
+pre-commit:
+  commands:
+    fmt:
+      glob: "*.rs"
+      run: cargo fmt --all --check
+    comments:
+      glob: "*.rs"
+      run: cargo xtask comments {staged_files}
+
+commit-msg:
+  commands:
+    conventional:
+      run: committed --commit-file {1}
+    attribution:
+      run: cargo xtask attribution --file {1}
+
+pre-push:
+  commands:
+    ci:
+      run: cargo xtask ci
