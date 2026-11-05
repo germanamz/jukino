@@ -1,0 +1,4 @@
+# Line endings: every text file is checked out with LF on every platform, so
+# rustfmt (newline_style = "Unix") and the hook scripts behave the same on Windows.
+* text=auto eol=lf
+*.sh text eol=lf

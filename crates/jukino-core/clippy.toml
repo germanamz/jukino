@@ -1,0 +1,60 @@
+# Same thresholds as the workspace clippy.toml; clippy reads only the nearest file.
+# Clippy counts `self` as a parameter and counts the function body plus any enclosing
+# `impl` or inline `mod` as nesting levels, so these values mean: at most `self` + 3
+# parameters, and at most three nested blocks inside a method.
+too-many-lines-threshold = 30
+cognitive-complexity-threshold = 15
+too-many-arguments-threshold = 4
+excessive-nesting-threshold = 5
+
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+# Core only: no boolean flag parameters, and no I/O, clock, environment, process or
+# thread APIs. The core reaches all of these through ports.
+max-fn-params-bools = 0
+
+disallowed-types = [
+    { path = "std::fs::File", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::OpenOptions", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::net::TcpStream", reason = "the core performs no I/O; use a network port" },
+    { path = "std::net::TcpListener", reason = "the core performs no I/O; use a network port" },
+    { path = "std::net::UdpSocket", reason = "the core performs no I/O; use a network port" },
+    { path = "std::process::Command", reason = "the core starts no processes" },
+    { path = "std::process::Child", reason = "the core starts no processes" },
+]
+
+disallowed-methods = [
+    { path = "std::fs::read", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::read_to_string", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::write", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::read_dir", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::create_dir", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::create_dir_all", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::remove_file", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::remove_dir", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::remove_dir_all", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::copy", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::rename", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::fs::metadata", reason = "the core performs no I/O; use a storage port" },
+    { path = "std::env::var", reason = "configuration reaches the core as typed values from the composition root" },
+    { path = "std::env::var_os", reason = "configuration reaches the core as typed values from the composition root" },
+    { path = "std::env::vars", reason = "configuration reaches the core as typed values from the composition root" },
+    { path = "std::env::args", reason = "arguments are parsed by a driving adapter" },
+    { path = "std::env::args_os", reason = "arguments are parsed by a driving adapter" },
+    { path = "std::env::current_dir", reason = "the core performs no I/O; paths come in as values" },
+    { path = "std::env::set_current_dir", reason = "the core performs no I/O" },
+    { path = "std::env::temp_dir", reason = "the core performs no I/O; paths come in as values" },
+    { path = "std::env::home_dir", reason = "the core performs no I/O; paths come in as values" },
+    { path = "std::process::exit", reason = "exit codes belong to driving adapters" },
+    { path = "std::thread::spawn", reason = "concurrency is an adapter concern" },
+    { path = "std::thread::sleep", reason = "time comes in through a clock port" },
+    { path = "std::time::SystemTime::now", reason = "pass the current time in, or use a clock port" },
+    { path = "std::time::Instant::now", reason = "pass the current time in, or use a clock port" },
+    { path = "std::io::stdin", reason = "the core performs no I/O" },
+    { path = "std::io::stdout", reason = "the core performs no I/O" },
+    { path = "std::io::stderr", reason = "the core performs no I/O" },
+]

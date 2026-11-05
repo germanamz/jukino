@@ -1,0 +1,21 @@
+# Architecture rules checked by `cargo xtask arch`. See CONVENTIONS.md (B1–B5, B9).
+
+# The core holds the domain and its ports. It may depend only on the external crates
+# listed here, each with a reason: { name = "…", reason = "…" }.
+[core]
+crate = "jukino-core"
+allowed-dependencies = []
+
+# One composition root per deployable: the only crates that wire adapters.
+[composition-roots]
+crates = ["jukino", "jukino-ui"]
+
+# Every crate under this directory is an adapter. Adapters depend on the core only,
+# except for declared couplings: { from = "…", to = "…", reason = "…" }.
+[adapters]
+directory = "crates/adapters"
+couplings = []
+
+# Repository tooling; product crates must not depend on it.
+[tooling]
+crates = ["xtask"]
