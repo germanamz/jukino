@@ -46,6 +46,8 @@ tusk claude install       # optional: the Tusk mod for Claude Code sessions
 ## Contributing
 
 Read [CONVENTIONS.md](CONVENTIONS.md). Agents follow [AGENTS.md](AGENTS.md), its short form.
+The design of each area is in [docs/](docs/README.md), and planned work is tracked as Tusk
+tickets in [tickets/](tickets/README.md).
 Commits follow Conventional Commits, and pull requests fill in
 `.github/pull_request_template.md`. When a pull request changes existing tests or gate
 configuration, CI waits for a contributor to add the `guard-approved` label.

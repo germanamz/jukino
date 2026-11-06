@@ -1,7 +1,8 @@
 [workspace]
 name = "jukino"
 # Gitignore-style patterns. Index the knowledge documents (VISION.md, CONVENTIONS.md,
-# docs/); skip build output, tooling, and the entry files agents load directly.
+# docs/) and the tickets (tickets/); skip build output, tooling, and the entry files
+# agents load directly.
 ignore = [
     "target/",
     "mutants.out/",
@@ -12,7 +13,6 @@ ignore = [
     ".cargo/",
     ".config/",
     "xtask/",
-    "docs/superpowers/plans/",
     "AGENTS.md",
     "CLAUDE.md",
     "README.md",
@@ -86,7 +86,109 @@ document-prefix = "search_document: "
 [query]
 lexical-weight = 0.5
 
-# Every session starts with the product picture.
+# Every session starts with the product picture and the open tickets.
 [context]
 pinned    = ["VISION"]
+include   = ["open-tickets"]
 max-bytes = 9500
+
+# Added by `tusk pack add kanban` on 2026-11-06
+# Tusk built-in pack: kanban
+#
+# Adds a `ticket` node type with workflow-validated status, priority,
+# and due-date properties; a WBS `parent` edge for hierarchy; and a
+# `blocks` edge for dependency.
+#
+# A "project" in this pack is just a higher-level ticket — the WBS
+# parent edge captures the hierarchy. There is no separate `project`
+# node type; if you need one, declare `[node-types.project]` in your
+# workspace manifest.
+#
+# Tagging is intentionally out of scope here. To tag tickets, run
+# `tusk pack add tags` (composes cleanly), then either `[[tag/x]]`
+# wikilinks in the body or a per-ticket ref opt-in:
+#   properties = [{ name = "tags", type = "list-of",
+#                   item-type = "ref", to = "tag" }]
+#
+# Customizing workflow states: edit [behaviors.workflow.kanban].states
+# and transitions — the workflow validator is the single source of truth
+# for status. Do not redeclare `status` in [node-types.ticket].properties;
+# the behavior engine reserves it and rejects duplicate declarations.
+
+[node-types.ticket]
+description = "A unit of work tracked through a workflow"
+properties = [
+    { name = "priority", type = "enum", values = ["low", "medium", "high"] },
+    { name = "due",      type = "date" },
+    { name = "order",    type = "int" },
+]
+
+[edge-types.parent]
+description = "WBS parent — this ticket is a child of another ticket"
+from        = ["ticket"]
+to          = ["ticket"]
+cardinality = "many-to-one"
+ordered     = true
+acyclic     = true
+inverse     = "children"
+
+[edge-types.blocks]
+description = "This ticket blocks another from progressing"
+from        = ["ticket"]
+to          = ["ticket"]
+cardinality = "many-to-many"
+ordered     = false
+acyclic     = true
+inverse     = "blocked-by"
+
+[behaviors.workflow.kanban]
+applies-to      = ["ticket"]
+status-property = "status"
+
+states = [
+    { name = "pending",   initial = true },
+    { name = "active",    start = true },
+    { name = "completed", terminal = true, done = true },
+]
+
+transitions = [
+    { from = "pending",   to = "active" },
+    { from = "active",    to = "completed" },
+    { from = "active",    to = "pending" },
+    { from = "completed", to = "pending" },
+]
+
+# Jukino's own additions: see CONVENTIONS.md (Design documents and tickets, K).
+
+# Markdown links and inline-code paths become path refs, so `tusk doctor` warns
+# when a page names a file that is gone, and `names-path=tickets/<name>.md*` finds
+# the planned markers that point at a ticket.
+[edge-types.links-to]
+description = "A page links to a workspace file or names it in inline code"
+from        = ["*"]
+paths       = true
+
+# Tickets live in tickets/, and tickets/ holds only tickets (K5).
+[rule.ticket-location]
+description = "a ticket lives in tickets/"
+filter      = "type=ticket AND NOT path=tickets/**"
+
+[rule.tickets-folder]
+description = "tickets/ holds only tickets"
+filter      = "path=tickets/** AND NOT type=ticket"
+
+# The design lives in the design documents, not in specs or plans (K1).
+[rule.no-specs-or-plans]
+description = "docs/ holds design documents, one per area, not specs or plans; put the design in the area's document and the work in tickets/"
+filter      = "path=docs/superpowers/** OR path=docs/**/specs/** OR path=docs/**/plans/**"
+
+# The session digest lists the work that is not finished, active tickets first.
+[alias.open-tickets]
+command     = "query"
+description = "tickets not yet completed"
+
+[alias.open-tickets.args]
+filter = "type=ticket AND status!=completed"
+sort   = "+status,+id"
+fields = ["id", "title", "properties.status", "properties.priority"]
+format = "compact"

@@ -9,7 +9,7 @@ The research behind these rules (the audit of the hexagonal pattern, the reasons
 sources for each rule, and the evidence on rule-file size) is the clean-hexagon doc,
 "Clean ports and adapters agent rules":
 <https://claude.ai/artifact/Ks8VYF57ui3Buoy9nvaMof>. Rule IDs here match that doc. Rules with
-IDs the doc does not have (C, R) are specific to Jukino. This file stands on its own for anyone
+IDs the doc does not have (C, K, R) are specific to Jukino. This file stands on its own for anyone
 who cannot open the doc.
 
 ## 1. How to read this
@@ -36,6 +36,8 @@ who cannot open the doc.
 | Fake | A working, simplified implementation of a driven port, such as an in-memory store. |
 | Contract suite | One generic test suite for a driven port, run against the fake and every real adapter. |
 | Interactor | Not used here; the word means different things in Cockburn's and Martin's writing. |
+| Design document | A living document in `docs/` that describes one area of Jukino as a whole, built and planned (K1). |
+| Ticket | One unit of planned work: a Tusk `ticket` node in `tickets/` (K5). |
 
 ### Domain glossary
 
@@ -155,6 +157,22 @@ Crates by role:
 | C4 | Every public item has a doc comment. Fallible functions have `# Errors`, panicking ones `# Panics`. Intra-doc links resolve. | A | `missing_docs`, clippy pedantic, `cargo doc` with `-D warnings` |
 | C5 | An explanation longer than one line goes in the doc comment of the item it explains. | J | review |
 
+### Design documents and tickets (K)
+
+`docs/README.md` gives the outline of a design document and the planned-marker format.
+`tickets/README.md` gives the ticket template and the Tusk calls.
+
+| ID | Rule | Type | Check |
+| --- | --- | --- | --- |
+| K1 | `docs/` holds the design of the whole system, one living design document per area: a behaviour from `VISION.md`, or a part of how Jukino is built. Write no spec, plan, proposal or per-change document, whatever a skill or workflow asks for. The design goes into the design documents and the work into tickets. | A | `tusk doctor` (`no-specs-or-plans`); review |
+| K2 | A design document describes its area as a whole: what it does and for whom, its concepts, its behaviour with edge cases and errors, how it is built across core, ports, adapters and composition roots, and the decisions behind it with the alternatives rejected. Write in the present tense, with no dates, status lines or change history, and rewrite the parts the design changes rather than appending. | J | review |
+| K3 | A change that alters behaviour or design updates the design documents it affects in the same PR, so `docs/` matches the code. A new area gets its own document and a row in `docs/README.md`. | A | review; PR template |
+| K4 | Planning a feature means writing its design into the design documents and its work into tickets, reviewed like any change. A part designed but not built yet starts with `> Planned: [<ticket title>](../tickets/<name>.md)`. The PR that builds it removes the marker. | A | review; `tusk doctor` (`path-missing`) |
+| K5 | Planned work is a Tusk ticket at `tickets/<name>.md`, named for its outcome in kebab case. One ticket is one PR-sized change. Larger work is a parent ticket whose children name it with `parent`, and `blocks` orders tickets that depend on each other. | A | `tusk doctor` (`ticket-location`, `tickets-folder`) |
+| K6 | A ticket states its goal, links to the design-document sections that hold its design, lists the behaviours to test (T2) and says when it is done. It does not restate the design. | J | review |
+| K7 | A ticket starts `pending`, becomes `active` when work starts, and becomes `completed` in the PR that finishes it. Change the status through Tusk, which checks each move. Work a PR leaves for later becomes a ticket listed under "Follow-ups". Dropped work is deleted with its planned markers. | A | Tusk workflow; review; PR template |
+| K8 | Each fact has one home: what Jukino does for its users in `VISION.md`, how every change is made in `CONVENTIONS.md`, how each area is built in `docs/`, an item's contract in its doc comment, the planned work in `tickets/`. Link to the home instead of repeating it. | J | review |
+
 ### Errors (E)
 
 | ID | Rule | Type | Check |
@@ -175,7 +193,7 @@ Crates by role:
 | ID | Rule | Type | Check |
 | --- | --- | --- | --- |
 | T1 | New behaviour starts with a test that fails for the right reason; a compile failure counts. Write it against the driving port. | A | review of the red run (D7) |
-| T2 | Before coding, write the list of behaviours to test, including existing ones that must keep working. | J | plan or PR |
+| T2 | Before coding, write the list of behaviours to test, including existing ones that must keep working. | J | ticket or PR |
 | T3 | Core tests run without files, network, processes or the real clock. Driven ports get in-memory fakes. | A | core dependency allow-list and clippy lists also apply to tests |
 | T4 | Replace stateful driven ports with hand-written fakes and assert outcomes. Spies may record fire-and-forget calls. | J | review |
 | T5 | Never mock types you do not own; wrap the library behind a port and fake the port. No mocking crate without approval. | A | review; `arch.toml` and dependency review |
@@ -325,6 +343,7 @@ choice you made, or stop and report when the choice would add a port or cross a 
 | Git hooks | `lefthook.yml` | Q21, C1–C3, R3, R5 |
 | Claude Code hooks | `.claude/settings.json` | R1, G9, C1–C3, Q21 |
 | Everything, in order | `cargo xtask ci`; GitHub Actions `.github/workflows/ci.yml` and `.github/workflows/pr-checks.yml` | all of the above |
+| Design documents and tickets | `tusk doctor`, with the rules, ticket workflow and `links-to` paths in `tusk.toml`; local only, since CI has no Tusk | K1, K4, K5, K7 |
 
 ## 8. Resolved decisions
 

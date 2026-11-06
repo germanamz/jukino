@@ -21,8 +21,7 @@ fixes for PR comments.
 - `cargo xtask mutants`: mutation-test the code changed since `origin/main`.
 - `cargo nextest run --workspace`: the tests.
 - `cargo xtask comments [paths]`, `cargo xtask arch`, `cargo xtask guard`: single checks.
-- Look up project knowledge (vision, conventions, specs) with the Tusk MCP tools (`tusk_query`)
-  before reading whole documents.
+- Look up the vision, conventions, design documents and tickets with Tusk (`tusk_query`) first.
 
 ## Map
 
@@ -72,6 +71,13 @@ fixes for PR comments.
 - Name the placement step before editing and stay in the layers it names (G2, G3).
 - Clean up only files the change already touches, within about 10% of the diff (G4).
 - Add a dependency only with a stated reason and a version checked with `cargo add` (G8).
+
+## Docs and tickets
+
+- No spec, plan or proposal documents, even when a skill asks for one. The design goes in the
+  design documents in `docs/`, updated in the same PR as the change (K1–K3, K8).
+- Planned work is a Tusk ticket in `tickets/` (see `tickets/README.md`). Unbuilt design is marked
+  `> Planned: [title](../tickets/<name>.md)` until the PR that builds it (K4–K7).
 
 ## Stop and report when
 

@@ -18,4 +18,7 @@
 - Path-scoped rules in `.claude/rules/` load when you touch matching files. Load the
   `placing-a-change` skill when planning any change.
 - The Tusk mod (installed with `tusk claude install`) adds the Tusk MCP tools and a context
-  digest at the start of each session.
+  digest, with the vision and the open tickets, at the start of each session.
+- Skills that write a spec or a plan, such as superpowers' brainstorming and writing-plans,
+  follow K1 here: the design goes into the design documents in `docs/` and the tasks into
+  tickets made with `tusk_node_create`, never into `docs/superpowers/` or another spec folder.
