@@ -37,7 +37,7 @@ By default the folder/request structure defines the chain that requests run in s
 
 A Chain run allows to arrange requests/folders or even collections as units of executions
 allowing to run parallel pre-requests or state management middleware and more complex
-structures like parallel DAGs that join on certain points, but never a diamond (recursion).
+structures like parallel DAGs that join on certain points, but never a cycle.
 
 ```mermaid
 graph TD
