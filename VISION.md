@@ -19,7 +19,12 @@ called variables.
 
 ### Variables
 
-Variables are grouped in Environments and can be created, read, updated or deleted.
+Variables are grouped in Environments and can be created, read, updated or deleted
+manually or from middlewares; some can be read-only for middleware with
+a configured flag.
+
+Variable values can have inter-dependencies only within the same environment, these are
+evaluated at read time, this allows to create composed variables.
 
 ### Graph-middleware
 
@@ -44,13 +49,16 @@ graph TD
 
 ### Humans
 
-- The `jukino` command-line interface; a user interface (`jukino-ui`).
+- The `jukino` command-line interface
+- A desktop and web user interface (`jukino-ui`).
 
-### MCP
+### AI
+
+#### MCP
 
 A CLI I/O MCP from jukino cli that allows agents like Claude Code to interact with jukino.
 
-### Mods/Plugins
+#### Harness Mods/Plugins
 
 Specific harness mods like Claude Code for agents to be able to have better access to jukino
 features.
