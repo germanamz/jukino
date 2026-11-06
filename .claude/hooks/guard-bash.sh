@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Bash. Blocks commands that skip the project's checks or that
-# only a contributor may run, and asks the contributor before any commit, push, or
-# pull-request creation or merge, whatever form the command takes. See AGENTS.md.
-# Written for bash 3.2, the version macOS ships.
+# only a contributor may run, whatever form the command takes. Asks the contributor
+# before every pull-request creation or merge, and before the first commit or push
+# after each of their messages: approving it opens a wave (review-wave.sh) that lets
+# later commands made only of `cd`, `git add`, `git commit` and `git push` through
+# until their next message. See AGENTS.md. Written for bash 3.2, the version macOS
+# ships.
 set -euo pipefail
 set -f
 
@@ -10,9 +13,15 @@ if ! command -v jq >/dev/null 2>&1; then
   echo "Blocked: guard-bash.sh needs jq (see README.md)." >&2
   exit 2
 fi
-command=$(jq -r '.tool_input.command // ""')
+input=$(cat)
+command=$(jq -r '.tool_input.command // ""' <<<"$input")
 lower=$(printf '%s' "$command" | tr '[:upper:]' '[:lower:]')
 ask_reason=""
+gated=false
+covered=true
+case "$command" in
+  *'>'* | *'<'*) covered=false ;;
+esac
 
 block() {
   echo "Blocked: $1. Fix the cause instead, or stop and report to the contributor (AGENTS.md)." >&2
@@ -45,7 +54,7 @@ check_commit() {
       block "$no_verify"
     fi
   done
-  ask_reason="a contributor must approve every commit"
+  gated=true
 }
 
 check_push() {
@@ -61,15 +70,23 @@ check_push() {
       block "$no_verify"
     fi
   done
-  ask_reason="a contributor must approve every push"
+  gated=true
 }
 
 check_git() {
   local i=0 subcommand="" args=("$@")
   while [ "$i" -lt "${#args[@]}" ]; do
     case "${args[$i]}" in
-      -C | -c | --git-dir | --work-tree | --namespace | --config-env | --super-prefix) i=$((i + 2)) ;;
-      -*) i=$((i + 1)) ;;
+      -C) i=$((i + 2)) ;;
+      -c | --git-dir | --work-tree | --namespace | --config-env | --super-prefix)
+        covered=false
+        i=$((i + 2))
+        ;;
+      --no-pager) i=$((i + 1)) ;;
+      -*)
+        covered=false
+        i=$((i + 1))
+        ;;
       *)
         subcommand=${args[$i]}
         i=$((i + 1))
@@ -79,8 +96,10 @@ check_git() {
   done
   local rest=("${args[@]:$i}")
   case "$subcommand" in
+    add) ;;
     commit) check_commit ${rest[@]+"${rest[@]}"} ;;
     push) check_push ${rest[@]+"${rest[@]}"} ;;
+    *) covered=false ;;
   esac
 }
 
@@ -116,11 +135,15 @@ while IFS= read -r segment; do
   while [ "$i" -lt "${#words[@]}" ]; do
     word=${words[$i]}
     if [[ "$word" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+      covered=false
       i=$((i + 1))
       continue
     fi
     case "$word" in
-      command | env | exec | nohup | time | sudo | xargs) i=$((i + 1)) ;;
+      command | env | exec | nohup | time | sudo | xargs)
+        covered=false
+        i=$((i + 1))
+        ;;
       *) break ;;
     esac
   done
@@ -128,13 +151,38 @@ while IFS= read -r segment; do
   program=${words[$i]##*/}
   rest=("${words[@]:$((i + 1))}")
   case "$program" in
+    cd) ;;
     git) check_git ${rest[@]+"${rest[@]}"} ;;
-    gh) check_gh ${rest[@]+"${rest[@]}"} ;;
+    gh)
+      covered=false
+      check_gh ${rest[@]+"${rest[@]}"}
+      ;;
+    *) covered=false ;;
   esac
 done <<<"$segments"
 
+session=$(jq -r '.session_id // ""' <<<"$input")
+wave=""
+if [[ "$session" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  tmp=${TMPDIR:-/tmp}
+  wave="${tmp%/}/jukino-review-wave/$session"
+fi
+
+respond() {
+  jq -n --arg decision "$1" --arg reason "Review gate: $2 (AGENTS.md)." \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $decision, permissionDecisionReason: $reason}}'
+}
+
+if $gated && ! { [ -n "$wave" ] && [ -f "$wave/open" ]; }; then
+  ask_reason=${ask_reason:-"a contributor approves the first commit or push after each of their messages"}
+  if [ -n "$wave" ]; then
+    mkdir -p "$wave"
+    jq -r '.tool_use_id // ""' <<<"$input" >"$wave/pending"
+  fi
+fi
 if [ -n "$ask_reason" ]; then
-  jq -n --arg reason "Review gate: $ask_reason (AGENTS.md)." \
-    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: $reason}}'
+  respond ask "$ask_reason"
+elif $gated && $covered; then
+  respond allow "the contributor approved commits and pushes until their next message"
 fi
 exit 0

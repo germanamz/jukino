@@ -5,11 +5,17 @@
     reason = "test helpers fail the test when setup fails"
 )]
 
+use std::ffi::OsStr;
 use std::io::{ErrorKind, Write as _};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
 fn hook_with_path(script: &str, input: &serde_json::Value, path: Option<&str>) -> Output {
+    let path = path.map(|path| ("PATH", OsStr::new(path)));
+    hook_with_env(script, input, path.as_slice())
+}
+
+fn hook_with_env(script: &str, input: &serde_json::Value, env: &[(&str, &OsStr)]) -> Output {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("workspace root");
@@ -18,12 +24,10 @@ fn hook_with_path(script: &str, input: &serde_json::Value, path: Option<&str>) -
         .arg(root.join(".claude/hooks").join(script))
         .current_dir(root)
         .env("CLAUDE_PROJECT_DIR", root)
+        .envs(env.iter().copied())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(path) = path {
-        command.env("PATH", path);
-    }
     let mut child = command.spawn().expect("bash runs");
     let written = child
         .stdin
@@ -53,6 +57,174 @@ fn decision(output: &Output) -> Option<String> {
     json["hookSpecificOutput"]["permissionDecision"]
         .as_str()
         .map(str::to_owned)
+}
+
+/// A Claude Code session whose review-gate state lives in its own temporary directory.
+struct Session {
+    tmp: tempfile::TempDir,
+    id: &'static str,
+}
+
+impl Session {
+    fn new(id: &'static str) -> Self {
+        let tmp = tempfile::tempdir().expect("temporary directory");
+        Self { tmp, id }
+    }
+
+    fn hook(&self, script: &str, fields: serde_json::Value) -> Output {
+        let mut input = fields;
+        input["session_id"] = self.id.into();
+        hook_with_env(script, &input, &[("TMPDIR", self.tmp.path().as_os_str())])
+    }
+
+    fn bash(&self, command: &str, tool_use_id: &str) -> Output {
+        self.hook(
+            "guard-bash.sh",
+            serde_json::json!({
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Bash",
+                "tool_use_id": tool_use_id,
+                "tool_input": { "command": command },
+            }),
+        )
+    }
+
+    fn decision(&self, command: &str, tool_use_id: &str) -> Option<String> {
+        let output = self.bash(command, tool_use_id);
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "{command}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        decision(&output)
+    }
+
+    fn record(&self, fields: serde_json::Value) {
+        let output = self.hook("review-wave.sh", fields);
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.stdout, Vec::<u8>::new(), "the hook adds no context");
+    }
+
+    fn finish(&self, event: &str, tool_use_id: &str) {
+        self.record(serde_json::json!({
+            "hook_event_name": event,
+            "tool_name": "Bash",
+            "tool_use_id": tool_use_id,
+        }));
+    }
+
+    fn message(&self) {
+        self.record(serde_json::json!({
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "next step",
+        }));
+    }
+
+    fn open_wave(&self) {
+        let first = self.decision("git commit -m x", "approved");
+        assert_eq!(first.as_deref(), Some("ask"));
+        self.finish("PostToolUse", "approved");
+    }
+}
+
+#[test]
+fn an_approved_commit_lets_commits_and_pushes_through_until_the_next_message() {
+    let session = Session::new("wave-session");
+    assert_eq!(
+        session.decision("git commit -m x", "t1").as_deref(),
+        Some("ask")
+    );
+    session.finish("PostToolUse", "t1");
+    for command in [
+        "git push origin chore/x",
+        "git commit -m y",
+        "cd /repo && git add a b && git commit -F /tmp/message && git push",
+        "git -C /repo push -u origin chore/x",
+    ] {
+        let decision = session.decision(command, "t2");
+        assert_eq!(decision.as_deref(), Some("allow"), "{command}");
+    }
+    session.message();
+    assert_eq!(session.decision("git push", "t3").as_deref(), Some("ask"));
+}
+
+#[test]
+fn an_approved_commit_that_fails_still_opens_the_wave() {
+    let session = Session::new("wave-session");
+    assert_eq!(
+        session.decision("git commit -m x", "t1").as_deref(),
+        Some("ask")
+    );
+    session.finish("PostToolUseFailure", "t1");
+    assert_eq!(session.decision("git push", "t2").as_deref(), Some("allow"));
+}
+
+#[test]
+fn a_denied_commit_opens_no_wave() {
+    let session = Session::new("wave-session");
+    assert_eq!(
+        session.decision("git commit -m x", "t1").as_deref(),
+        Some("ask")
+    );
+    session.finish("PostToolUse", "t2");
+    assert_eq!(session.decision("git push", "t3").as_deref(), Some("ask"));
+}
+
+#[test]
+fn inside_a_wave_pull_requests_still_ask() {
+    let session = Session::new("wave-session");
+    session.open_wave();
+    for command in [
+        "gh pr create --title x",
+        "gh pr merge 3",
+        "git push && gh pr create --title x",
+        "gh api repos/a/b/pulls -f title=x",
+    ] {
+        let decision = session.decision(command, "t2");
+        assert_eq!(decision.as_deref(), Some("ask"), "{command}");
+    }
+}
+
+#[test]
+fn inside_a_wave_other_commands_keep_the_normal_permission_checks() {
+    let session = Session::new("wave-session");
+    session.open_wave();
+    for command in [
+        "git commit -m x && rm -rf target",
+        "git push 2>&1 | tail -1",
+        "git commit -m x && git reset --hard HEAD~1",
+        "sudo git push",
+        "ls",
+    ] {
+        assert_eq!(session.decision(command, "t2"), None, "{command}");
+    }
+}
+
+#[test]
+fn inside_a_wave_bypasses_are_still_blocked() {
+    let session = Session::new("wave-session");
+    session.open_wave();
+    for command in ["git push --force", "git commit -n -m x"] {
+        let output = session.bash(command, "t2");
+        assert_eq!(output.status.code(), Some(2), "{command} should be blocked");
+    }
+}
+
+#[test]
+fn session_ids_that_are_not_plain_names_open_no_wave() {
+    let session = Session::new("../escape");
+    assert_eq!(
+        session.decision("git commit -m x", "t1").as_deref(),
+        Some("ask")
+    );
+    session.finish("PostToolUse", "t1");
+    assert_eq!(session.decision("git push", "t2").as_deref(), Some("ask"));
 }
 
 fn assert_blocked(commands: &[&str]) {
