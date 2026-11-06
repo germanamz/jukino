@@ -31,6 +31,8 @@ evaluated at read time, this allows to create composed variables.
 The Graph-Middleware offers a flexible way to cascade state across request executions,
 a request is a unit of execution in this middleware just like how Go's Chi middleware.
 
+Middleware is written in JavaScript, and folders and collections can carry it.
+
 #### Chain runs
 
 By default the folder/request structure defines the chain that requests run in sequence.
