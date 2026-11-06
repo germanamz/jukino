@@ -4,7 +4,7 @@
 
 ## Motivation
 
-<!-- Why the change is needed: the problem, the behaviour from VISION.md, or the issue. -->
+<!-- Why the change is needed: the problem, the behaviour from VISION.md, or the ticket in tickets/. -->
 
 ## Placement step and layers touched
 
@@ -37,7 +37,9 @@
 - [ ] Every new dependency has a stated reason and a verified version.
 - [ ] Cleanup stays within touched files and about 10% of the diff.
 - [ ] Judgment-rule departures are listed above.
+- [ ] The design documents in `docs/` describe the change, and the planned markers it fulfils are removed.
+- [ ] Tickets this PR finishes are `completed`.
 
 ## Follow-ups
 
-<!-- Work deliberately left for later. -->
+<!-- Work deliberately left for later, each as a ticket in tickets/. -->
