@@ -4,6 +4,11 @@ Jukino is a modern API interaction tool for humans and agents, written in Rust.
 
 ## Behaviours
 
+### Requests
+
+Jukino uses the [OpenAPI v2 & v3](https://www.openapis.org/) standard to persist
+request definitions and interactions.
+
 ### Requests in folders
 
 Jukino manages HTTP requests in folders, the way a file system holds files.
@@ -47,6 +52,11 @@ graph TD
     D --> E --> C
 ```
 
+#### Imports & Exports
+
+Jukino can export defined requests collections to OpenAPI v2/v3 and supports the import of
+API definitions from OpenAPI v2/v3.
+
 ## Interfaces
 
 ### Humans
@@ -64,6 +74,14 @@ A CLI I/O MCP from jukino cli that allows agents like Claude Code to interact wi
 
 Specific harness mods like Claude Code for agents to be able to have better access to jukino
 features.
+
+## Storage
+
+Jukino supports multiple storage drivers, the main one being JSON which is git trackable by
+default.
+
+- Memory JSON - A plane JSON file that saves requests by id in a hash map.
+- Postgres - A postgres connector that uses JSONB to store requests.
 
 ## Extending this document
 
