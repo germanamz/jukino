@@ -80,7 +80,7 @@ features.
 Jukino supports multiple storage drivers, the main one being JSON which is git trackable by
 default.
 
-- Memory JSON - A plane JSON file that saves requests by id in a hash map.
+- Memory JSON - A plain JSON file that saves requests by id in a hash map.
 - Postgres - A postgres connector that uses JSONB to store requests.
 
 ## Extending this document
